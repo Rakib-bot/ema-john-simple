@@ -11,3 +11,13 @@
     margin-left:5px;
    
 }
+
+p{
+    text-decoration: none;
+}
+.ReviewItem
+{
+    border-bottom: 2px solid lightgray;
+    padding-bottom: 10px;
+    padding-top:5px ;
+}

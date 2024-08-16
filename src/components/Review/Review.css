@@ -1,0 +1,17 @@
+.review__container
+{
+    display:flex;
+}
+.review__product__container
+{
+    width:70%;
+  
+    padding-left: 10%;
+    padding-right:1% ;
+    border-right: 2px solid lightgray;
+}
+.order__summary__container
+{
+    margin-left: 1%;
+    margin-right: 20%;
+}
