@@ -1,92 +1,70 @@
 import React, { useContext, useState } from 'react';
-import { initializeApp } from 'firebase/app';
-import { firebaseConfig } from './firebase.config';
-import { Navigate } from 'react-router-dom';
+
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 //import "firebase/auth";
-import { getAuth, signOut, signInWithPopup, GoogleAuthProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, FacebookAuthProvider  } from "firebase/auth";
+
 import PasswordError from '../PasswordError/PasswordError';
 import { userContext } from '../../App';
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+import { handleFbSignIn, handleGoogleSignIn, handleSignOut, logInWithEmailAndPassword, signUpWithEmailAndPassword } from './LoginManager';
+
 function Login() {
 
   const [loggedInUser, setLoggedInUser] = useContext(userContext);
-  const provider = new GoogleAuthProvider();
-  const fbProvider =new FacebookAuthProvider();
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { from } = location.state || { from: { pathname: "/" } };
 
   const [check, setCheck] = useState({
     emailValid: false,
     passwordValid: false
   })
   const [newUser, setNewUser] = useState(false);
-  const [navigateTo,setNavigateTo] = useState(null);
+  const [navigateTo, setNavigateTo] = useState(null);
   const [user, setUser] = useState({
     isSignedIn: false,
     name: '',
     email: '',
     photo: '',
     password: '',
+    status: '',
+    error: '',
+    isSignedUp: false
   })
-  const [status, setStatus] = useState('');
-  const [color, setColor] = useState('');
-  const [isSignedUp,setIsSignedUp] = useState(false);
-  
-
-  const handleSignIn = () => {
-    if (!auth.currentUser) {
-      signInWithPopup(auth, provider)
-        .then((result) => {
-          const { displayName, email, photoURL } = result.user;
-          const signedInUser = {
-            isSignedIn: true,
-            name: displayName,
-            email: email,
-            photo: photoURL
-          }
-          setUser(signedInUser);
-        }).catch((error) => {
-          // Handle Errors here.
-          const errorCode = error.code;
-          const errorMessage = error.message;
-          // The email of the user's account used.
-          const email = error.customData.email;
-          // The AuthCredential type that was used.
-          const credential = GoogleAuthProvider.credentialFromError(error);
-          // ...
-        });
-
-    }
-    else {
-      console.log("Already Logged In");
-      const signedInUser = {
-        isSignedIn: true,
-        name: auth.currentUser.displayName,
-        email: auth.currentUser.email,
-        photo: auth.currentUser.photoURL
-      }
-      setUser(signedInUser)
 
 
-    }
+  const googleSignIn = () => {
+
+    handleGoogleSignIn()
+      .then(res => {
+        setUser(res);
+        setLoggedInUser(res);
+        navigate(from);
+      })
 
   }
 
-  const handleSignOut = () => {
-    signOut(auth).then(() => {
-      const signedOutUser = {
-        isSignedIn: false,
-        name: '',
-        email: '',
-        photo: ''
-      }
-      setUser(signedOutUser);
+  const googleSignOut = () => {
 
-    })
-      .catch(err => {
-        console.log(err.message);
-
+    handleSignOut()
+      .then(res => {
+        setUser(res);
+        setLoggedInUser(res);
+        navigate(from);
+        
       })
   }
+
+  const FbSignIn = () => {
+    handleFbSignIn()
+      .then(res => {
+        setUser(res);
+        setLoggedInUser(res);
+        navigate(from);
+       
+      })
+  }
+
 
   const handleOnBlur = (e) => {
     let check = true;
@@ -115,111 +93,55 @@ function Login() {
 
     if (newUser && user.email && user.password) {
       console.log(user.email, user.password)
-      createUserWithEmailAndPassword(auth, user.email, user.password)
-        .then((userCredential) => {
-          // Signed up 
-          
-          setStatus('Sign up Succesfully')
-       
-          setIsSignedUp(true)
-          updateName(user.name);
-          setNavigateTo('/shipment');
-          // ...
-        })
-        .catch((error) => {
-          const errorCode = error.code;
-          const errorMessage = error.message;
-          setStatus(errorMessage)
-       
-          setIsSignedUp(false)
-          // ..
-        });
-
+      signUpWithEmailAndPassword(user)
+      .then(res=>{
+        setUser(res);
+        console.log('handleForm',res)
+        setLoggedInUser(res);
+        navigate(from);
+        
+      })
     }
-    if(!newUser && user.email && user.password) {
-      signInWithEmailAndPassword(auth, user.email, user.password)
-        .then((res) => {
-          // Signed in 
+    if (!newUser && user.email && user.password) {
+      logInWithEmailAndPassword(user)
+        .then(res => {
+          setUser(res);
+          setLoggedInUser(res);
+          navigate(from);
           
-          setStatus('Logged in Succesfully')
-          
-          console.log(res.user.email)
-          setIsSignedUp(true)
-          setLoggedInUser(user);
-          setNavigateTo('/shipment');
-          
-          // ...
         })
-        .catch((error) => {
-          const errorCode = error.code;
-          const errorMessage = error.message;
-          setStatus(errorMessage)
-       
-          setIsSignedUp(false)
-        });
 
     }
     e.preventDefault();
-   
+
 
   }
 
+  const SignOut = () => {
+    handleSignOut()
+      .then(res => {
+        setUser(res);
+        setLoggedInUser(res);
+        navigate(from);
+      
 
-  const updateName = (name) =>{
-
-    updateProfile(auth.currentUser, {
-      displayName: name
-    }).then(() => {
-      // Profile updated!
-      // ...
-      console.log('user name updated')
-    }).catch((error) => {
-      // An error occurred
-      // ...
-      console.log(error)
-    });
+      })
   }
 
 
- const handleFbSignIn =()=>{
 
-  signInWithPopup(auth, fbProvider)
-  .then((result) => {
-    // The signed-in user info.
-    const user = result.user;
-    console.log(user);
 
-    // This gives you a Facebook Access Token. You can use it to access the Facebook API.
-    const credential = FacebookAuthProvider.credentialFromResult(result);
-    const accessToken = credential.accessToken;
 
-    // IdP data available using getAdditionalUserInfo(result)
-    // ...
-  })
-  .catch((error) => {
-    // Handle Errors here.
-    const errorCode = error.code;
-    const errorMessage = error.message;
-    // The email of the user's account used.
-    const email = error.customData.email;
-    // The AuthCredential type that was used.
-    const credential = FacebookAuthProvider.credentialFromError(error);
 
-    // ...
-  });
- }
 
- if(navigateTo)
-  {
-    return <Navigate to={navigateTo}/>
-  }
+
   return (
     <div className='App' >
       {
-        user.isSignedIn ? <button onClick={handleSignOut}>Sign Out</button> : <button onClick={handleSignIn}>Sign In</button>
+        user.isSignedIn ? <button onClick={SignOut}>Sign Out</button> : <button onClick={googleSignIn}>Sign In</button>
       }
       <br />
-      <button onClick={handleFbSignIn}>Sign in using Facebook</button>
+      <button onClick={FbSignIn}>Sign in using Facebook</button>
 
       {
         user.isSignedIn && <div>
@@ -232,24 +154,26 @@ function Login() {
       <p>{user.email}</p>
       <p>{user.password}</p>
       <h1>Our Authentic System</h1>
+
+
       <form onSubmit={handleFrom}>
         <input type="checkbox" onChange={() => setNewUser(!newUser)} name="newUser" id="" />
 
         <label htmlFor="newUser">New User Sign Up</label>
         <br />
-        {newUser && <input type="text" name="name" id="" onBlur={handleOnBlur} required placeholder='Your name' />}
+        {newUser && <input type="text" name="name" id="" onBlur={handleOnBlur} autocomplete="off" required placeholder='Your name' />}
         <br />
-        <input type="email" name="email" onBlur={handleOnBlur} id="" required placeholder='Your email' />
+        <input type="email" name="email" onBlur={handleOnBlur} autocomplete="off" id="" required placeholder='Your email' />
         <br />
-        <input type="password" name="password" onBlur={handleOnBlur} id="" required placeholder='Your password' />
+        <input type="password" name="password" onBlur={handleOnBlur} autocomplete="off" id="" required placeholder='Your password' />
         <br />
-        <input type="submit" value={newUser?'Sign UP':'Login'} name="submit"></input>
+        <input type="submit" value={newUser ? 'Sign UP' : 'Login'} name="submit"></input>
       </form>
       {
-        isSignedUp ? <p style={{ color: 'green' }}>{status}</p>:<p style={{ color: 'red' }}>{status}</p>
+        user.isSignedUp ? <p style={{ color: 'green' }}>{user.status}</p> : <p style={{ color: 'red' }}>{user.status}</p>
       }
       {
-        !check.passwordValid && <PasswordError/>
+        !check.passwordValid && <PasswordError />
 
       }
       {
